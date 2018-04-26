@@ -1,0 +1,1 @@
+For the code to run properly download the MNIST train set and test set from https://pjreddie.com/projects/mnist-in-csv/ and put them on the resources folder with the names "mnist_test.csv" and "mnist_train.csv"
