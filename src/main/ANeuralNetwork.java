@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.NDArrayIndex;
+
 import utils.DataContainer;
 import utils.FileUtils;
 
@@ -26,24 +28,30 @@ public class ANeuralNetwork {
 	}
 
 	
-	private void train(INDArray trainingData, INDArray trainingLabels, int epochs, double learningRate) {
+	private void train(INDArray trainingData, INDArray trainingLabels, int epochs, int batchSize, double learningRate) {
 		INDArray trainingLabelsAsDigits =  Nd4j.argMax(trainingLabels, 1);
 		System.out.println("Starting training of " + epochs + " epochs...");
+		int miniBatchSize = 32;
+		int miniBatchStart = Integer.MAX_VALUE;
 		for(int e = 0; e < epochs; e++){
+			while(miniBatchStart >= batchSize - miniBatchSize) {
+				miniBatchStart = (int) (Math.random() * batchSize);
+			}
 			System.out.println("Starting epoch " + e);
-			INDArray yHat = forwardPropagation(trainingData);
-			backPropagation(yHat, trainingLabels);
+			INDArray yHat = forwardPropagation(trainingData.get(NDArrayIndex.interval(miniBatchStart, miniBatchStart + miniBatchSize), NDArrayIndex.all()));
+			backPropagation(yHat, trainingLabels.get(NDArrayIndex.interval(miniBatchStart, miniBatchStart + miniBatchSize), NDArrayIndex.all()));
 			updateWeights(learningRate);
 			
 			INDArray yHatAsDigit = Nd4j.argMax(yHat, 1);
 
 			int errors = 0;
 			for(int it = 0; it < yHatAsDigit.rows(); it++){
-				if(yHatAsDigit.getDouble(it) != trainingLabelsAsDigits.getDouble(it)){
+				if(yHatAsDigit.getDouble(it) != trainingLabelsAsDigits.getDouble(miniBatchStart + it)){
 					errors++;
 				}
 			}
 			System.out.println("Epoch " + e + " total errors: " + errors);
+			miniBatchStart = Integer.MAX_VALUE;
 		}
 	}
 
@@ -101,16 +109,16 @@ public class ANeuralNetwork {
 	
 	public static void main(String[] args) {
 		try {
-			final int BATCH_SIZE = 1000;
-			final int TEST_SIZE = 100;
-			final int EPOCHS = 200;
-			final double LEARNING_RATE = 0.005;
-			ANeuralNetwork network = new ANeuralNetwork(new int[]{784, 150, 150, 10}, BATCH_SIZE);
+			final int BATCH_SIZE = 40000;
+			final int TEST_SIZE = 10000;
+			final int EPOCHS = 7500;
+			final double LEARNING_RATE = 0.06;
+			ANeuralNetwork network = new ANeuralNetwork(new int[]{784, 100, 100, 10}, BATCH_SIZE);
 			
 			DataContainer trainingContainer = FileUtils.readCSV("resources/mnist_train.csv", BATCH_SIZE, 255);
 			INDArray trainingData = Nd4j.create((double[][])trainingContainer.getContentAt(0));
 			INDArray trainingLabels = Nd4j.create((double[][]) trainingContainer.getContentAt(1));
-			network.train(trainingData, trainingLabels, EPOCHS, LEARNING_RATE);
+			network.train(trainingData, trainingLabels, EPOCHS, BATCH_SIZE, LEARNING_RATE);
 			
 			DataContainer testContainer = FileUtils.readCSV("resources/mnist_test.csv", TEST_SIZE, 255);
 			INDArray testData = Nd4j.create((double[][])testContainer.getContentAt(0));
