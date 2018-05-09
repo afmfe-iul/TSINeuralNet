@@ -1,17 +1,34 @@
 package utils;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.Scanner;
+import javax.swing.SwingWorker;
 
-public class FileUtils {
-
-	public static DataContainer readCSV(String filePath, int lines, int maxInputValue) throws FileNotFoundException {
+public class FileReaderWorker extends SwingWorker<Void, Void>{
+	final String filePath;
+	final int lines;
+	final int maxInputValue;
+	final DataContainer dataContainer;
+	
+	public FileReaderWorker(String filePath, int lines, int maxInputValue) {
+		this.filePath = filePath;
+		this.lines = lines;
+		this.maxInputValue = maxInputValue;
+		this.dataContainer = new DataContainer();
+	}
+	
+	public DataContainer getContainer() {
+		return dataContainer;
+	}
+	
+	@Override
+	protected Void doInBackground() throws Exception {
 		double[][] inputs = new double[lines][];
 		double[][] labels = new double[lines][];
 		Scanner scanner = new Scanner(new File(filePath));
         int counter = 0;
+        setProgress(counter);
 		while(scanner.hasNext() && counter < lines){
         	String line = scanner.next();
         	double[] labelRow = new double[10];
@@ -23,11 +40,11 @@ public class FileUtils {
         	}
         	inputs[counter] = input;
         	counter++;
+        	setProgress(counter/lines);
 		}
         scanner.close();
-        DataContainer c = new DataContainer();
-        c.add(inputs);
-        c.add(labels);
-		return c;
+        dataContainer.add(inputs);
+        dataContainer.add(labels);
+        return null;
 	}
 }

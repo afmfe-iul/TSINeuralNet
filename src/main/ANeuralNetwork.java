@@ -1,14 +1,10 @@
 package main;
 
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.NDArrayIndex;
-
-import utils.DataContainer;
-import utils.FileUtils;
 
 public class ANeuralNetwork {
 	List<Layer> layers;
@@ -28,10 +24,10 @@ public class ANeuralNetwork {
 	}
 
 	
-	private void train(INDArray trainingData, INDArray trainingLabels, int epochs, int batchSize, double learningRate) {
+	public void train(INDArray trainingData, INDArray trainingLabels, int epochs, int batchSize,
+			int miniBatchSize, double learningRate) {
 		INDArray trainingLabelsAsDigits =  Nd4j.argMax(trainingLabels, 1);
-		System.out.println("Starting training of " + epochs + " epochs...");
-		int miniBatchSize = 32;
+		System.out.println("Starting training of " + epochs + " epochs..."); // TODO save the training progress somewhere to show on UI
 		int miniBatchStart = Integer.MAX_VALUE;
 		for(int e = 0; e < epochs; e++){
 			while(miniBatchStart >= batchSize - miniBatchSize) {
@@ -55,7 +51,7 @@ public class ANeuralNetwork {
 		}
 	}
 
-	private INDArray forwardPropagation(INDArray trainingData) {
+	public INDArray forwardPropagation(INDArray trainingData) {
 		layers.get(0).Z = trainingData;
 		
 		for(int i = 0; i < layers.size() - 1; i++){
@@ -85,47 +81,23 @@ public class ANeuralNetwork {
 	}
 
 
-	private void test(INDArray testData, INDArray testLabels) {
+	public MNISTResultsWrapper test(INDArray testData, INDArray testLabels) {
 		INDArray testLabelsAsDigits =  Nd4j.argMax(testLabels, 1);
 		
 		INDArray yHat = forwardPropagation(testData);
 		INDArray yHatAsDigit = Nd4j.argMax(yHat, 1);
-		int errors = 0;
+		
+		List<Integer> successPositions = new ArrayList<>();
+		List<Integer> errorPositions = new ArrayList<>();
 		for(int it = 0; it < yHatAsDigit.rows(); it++){
 			int digit = (int) testLabelsAsDigits.getDouble(it);
 			int guess = (int) yHatAsDigit.getDouble(it);
-			if(digit != guess){
-				System.out.print("ERROR!!!\t");
-				errors++;
-			}else{
-				System.out.print("correct!\t");
+			if(digit == guess){
+				successPositions.add(it);
+			}else {
+				errorPositions.add(it);
 			}
-			System.out.println("(Digit: " + testLabelsAsDigits.getDouble(it) +
-					", Guess: " + yHatAsDigit.getDouble(it));
 		}
-		System.out.println("Total errors in testing data: " + errors);
-		System.out.println("Sucess rate in testing data: " + ((double) testLabels.rows() - errors)/testLabels.rows());
-	}
-	
-	public static void main(String[] args) {
-		try {
-			final int BATCH_SIZE = 40000;
-			final int TEST_SIZE = 10000;
-			final int EPOCHS = 7500;
-			final double LEARNING_RATE = 0.06;
-			ANeuralNetwork network = new ANeuralNetwork(new int[]{784, 100, 100, 10}, BATCH_SIZE);
-			
-			DataContainer trainingContainer = FileUtils.readCSV("resources/mnist_train.csv", BATCH_SIZE, 255);
-			INDArray trainingData = Nd4j.create((double[][])trainingContainer.getContentAt(0));
-			INDArray trainingLabels = Nd4j.create((double[][]) trainingContainer.getContentAt(1));
-			network.train(trainingData, trainingLabels, EPOCHS, BATCH_SIZE, LEARNING_RATE);
-			
-			DataContainer testContainer = FileUtils.readCSV("resources/mnist_test.csv", TEST_SIZE, 255);
-			INDArray testData = Nd4j.create((double[][])testContainer.getContentAt(0));
-			INDArray testLabels = Nd4j.create((double[][]) testContainer.getContentAt(1));
-			network.test(testData, testLabels);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
+		return new MNISTResultsWrapper(testData, yHat, yHatAsDigit, successPositions, errorPositions);
 	}
 }
