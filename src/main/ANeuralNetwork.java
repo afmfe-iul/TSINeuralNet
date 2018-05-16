@@ -2,6 +2,8 @@ package main;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.NDArrayIndex;
@@ -29,9 +31,10 @@ public class ANeuralNetwork {
 		INDArray trainingLabelsAsDigits =  Nd4j.argMax(trainingLabels, 1);
 		System.out.println("Starting training of " + epochs + " epochs..."); // TODO save the training progress somewhere to show on UI
 		int miniBatchStart = Integer.MAX_VALUE;
+		Random rand = new Random(12345);
 		for(int e = 0; e < epochs; e++){
 			while(miniBatchStart >= batchSize - miniBatchSize) {
-				miniBatchStart = (int) (Math.random() * batchSize);
+				miniBatchStart = (int) (rand.nextDouble() * batchSize);
 			}
 			System.out.println("Starting epoch " + e);
 			INDArray yHat = forwardPropagation(trainingData.get(NDArrayIndex.interval(miniBatchStart, miniBatchStart + miniBatchSize), NDArrayIndex.all()));
