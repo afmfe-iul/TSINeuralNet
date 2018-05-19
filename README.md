@@ -1,4 +1,5 @@
-##Requisites:
+## Requisites:
+
 1. **Download the MNIST train and test set** from https://pjreddie.com/projects/mnist-in-csv/
 2. Make sure the downloaded files are named **"mnist\_test.csv"** and **"mnist\_train.csv"** and put them on the **resources folder** inside the project 
 
