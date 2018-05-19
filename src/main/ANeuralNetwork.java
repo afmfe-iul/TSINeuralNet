@@ -3,10 +3,11 @@ package main;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.NDArrayIndex;
+
+import utils.ANNFileUtils;
 
 public class ANeuralNetwork {
 	List<Layer> layers;
@@ -29,9 +30,11 @@ public class ANeuralNetwork {
 	public void train(INDArray trainingData, INDArray trainingLabels, int epochs, int batchSize,
 			int miniBatchSize, double learningRate) {
 		INDArray trainingLabelsAsDigits =  Nd4j.argMax(trainingLabels, 1);
-		System.out.println("Starting training of " + epochs + " epochs..."); // TODO save the training progress somewhere to show on UI
+		System.out.println("Starting training of " + epochs + " epochs...");
 		int miniBatchStart = Integer.MAX_VALUE;
 		Random rand = new Random(12345);
+		List<Integer> trainingErrorsByEpoch = new ArrayList<>();
+		
 		for(int e = 0; e < epochs; e++){
 			while(miniBatchStart >= batchSize - miniBatchSize) {
 				miniBatchStart = (int) (rand.nextDouble() * batchSize);
@@ -50,8 +53,10 @@ public class ANeuralNetwork {
 				}
 			}
 			System.out.println("Epoch " + e + " total errors: " + errors);
+			trainingErrorsByEpoch.add(errors);
 			miniBatchStart = Integer.MAX_VALUE;
 		}
+		ANNFileUtils.writeTrainingResults(trainingErrorsByEpoch);
 	}
 
 	public INDArray forwardPropagation(INDArray trainingData) {

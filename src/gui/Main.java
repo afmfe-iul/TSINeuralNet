@@ -25,7 +25,7 @@ import org.nd4j.linalg.factory.Nd4j;
 import main.ANeuralNetwork;
 import main.MNISTResultsWrapper;
 import utils.DataContainer;
-import utils.FileUtils;
+import utils.ANNFileUtils;
 
 public class Main {
 	private static final int FRAME_W = 320;
@@ -43,6 +43,7 @@ public class Main {
 	boolean showingSuccesses;
 
 	ANeuralNetwork network;
+	INDArray testLabelsAsDigits;
 	MNISTResultsWrapper testResults;
 
 	public Main() {
@@ -68,10 +69,10 @@ public class Main {
 	public void loadTestResultsUI() {
 		// North Panel
 		JPanel northPanel = new JPanel(new GridLayout(2, 1));
-		northPanel.add(new JLabel("Sucess percentage: " + String.format("%.2f",
-				((double) testResults.getTestData().rows() - testResults.getErrorPositions().size())
-						/ testResults.getTestData().rows() * 100)));
-		northPanel.add(new JLabel("Total errors: " + testResults.getErrorPositions().size()));
+		northPanel.add(new JLabel("Error rate on test data: " + String.format("%.2f",
+				((double) testResults.getErrorPositions().size())
+						/ testResults.getTestData().rows() * 100) + "%"));
+		northPanel.add(new JLabel("Total errors on test data: " + testResults.getErrorPositions().size()));
 		frame.getContentPane().add(northPanel, BorderLayout.NORTH);
 
 		// Center Panel
@@ -148,7 +149,7 @@ public class Main {
 		frame.getContentPane().add(decisionPanel, BorderLayout.EAST);
 	}
 
-	// XXX BEST SPECS SO FAR: {784, 150, 150, 10}, EPHOCS = 20000, MINI-BATCH = 64, LEARNING = 0.05 ---> SUCCESS = 96,53 % (347 errors)
+	// XXX BEST SPECS SO FAR: {784, 150, 150, 10}, EPHOCS = 20000, MINI-BATCH = 64, LEARNING = 0.05 ---> SUCCESS = 3,47 % (347 errors)
 	private void promptForANNSpecs() {
 		JDialog dialog = new JDialog(frame);
 		dialog.setTitle("Artificial Neural Network Parameters");
@@ -171,7 +172,7 @@ public class Main {
 		JTextField epochs = new JTextField("20000");
 		dialog.add(epochs);
 
-		dialog.add(new JLabel("Mini batch size (should be smaller than # training examples): "));
+		dialog.add(new JLabel("Mini batch size (must be smaller than # training examples): "));
 		JTextField miniBatchSize = new JTextField("64");
 		dialog.add(miniBatchSize);
 
@@ -218,7 +219,7 @@ public class Main {
 					network = new ANeuralNetwork(layerConfigurationArray, miniBatchSize);
 					
 					setLoadingLabeltext("Reading training data from file...");
-					DataContainer trainingContainer = FileUtils.readCSV("resources/mnist_train.csv", trainingExamples, 255);
+					DataContainer trainingContainer = ANNFileUtils.readCSV("resources/mnist_train.csv", trainingExamples, 255);
 					INDArray trainingData = Nd4j.create((double[][]) trainingContainer.getContentAt(0));
 					INDArray trainingLabels = Nd4j.create((double[][]) trainingContainer.getContentAt(1));
 
@@ -226,9 +227,10 @@ public class Main {
 					network.train(trainingData, trainingLabels, epochs, trainingExamples, miniBatchSize, learningRate);
 
 					setLoadingLabeltext("Reading testing data from file...");
-					DataContainer testContainer = FileUtils.readCSV("resources/mnist_test.csv", testExamples, 255);
+					DataContainer testContainer = ANNFileUtils.readCSV("resources/mnist_test.csv", testExamples, 255);
 					INDArray testData = Nd4j.create((double[][]) testContainer.getContentAt(0));
 					INDArray testLabels = Nd4j.create((double[][]) testContainer.getContentAt(1));
+					testLabelsAsDigits =  Nd4j.argMax(testLabels, 1);
 					
 					setLoadingLabeltext("Testing Neural Network...");
 					testResults = network.test(testData, testLabels);
@@ -269,8 +271,9 @@ public class Main {
 		raster.setSamples(0, 0, ICON_W, ICON_H, 0, result);
 		ImageIcon imgIcon = new ImageIcon(outputImage.getScaledInstance(ICON_W * 2, ICON_H * 2, Image.SCALE_SMOOTH));
 		imgLabel.setIcon(imgIcon);
-		guessLabel.setText("Neural Network guess: " + testResults.getResultsAsDigits().getInt(selectedExample));
-
+		guessLabel.setText("<html>Neural Network guess: " + testResults.getResultsAsDigits().getInt(selectedExample)
+				+ "<br>" + "Correct answer: " + testLabelsAsDigits.getInt(selectedExample) + "</html>");
+		
 		INDArray yHat = network.forwardPropagation(testResults.getTestData().getRow(selectedExample));
 		for (int i = 0; i < 10; i++) {
 			decisionLabels[i].setText(String.format("%.2f", yHat.getColumn(i).getDouble(0) * 100) + " %");
