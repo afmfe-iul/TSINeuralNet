@@ -8,9 +8,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.Scanner;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -22,16 +23,18 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
-import main.ANeuralNetwork;
-import main.MNISTResultsWrapper;
+import algorithm.ANeuralNetwork;
+import algorithm.MNISTResultsWrapper;
 import utils.DataContainer;
 import utils.ANNFileUtils;
 
-public class Main {
+public class App {
 	private static final int FRAME_W = 320;
 	private static final int FRAME_H = 280;
 	private static final int ICON_W = 28;
 	private static final int ICON_H = 28;
+	private static final String TRAINING_DATA_FILEPATH = "resources/mnist_train.csv" ;
+	private static final String TEST_DATA_FILEPATH = "resources/mnist_test.csv";
 
 	JFrame frame;
 	JLabel loadingLabel;
@@ -46,7 +49,7 @@ public class Main {
 	INDArray testLabelsAsDigits;
 	MNISTResultsWrapper testResults;
 
-	public Main() {
+	public App() {
 		selectedError = 0;
 		selectedSuccess = 0;
 		showingSuccesses = true;
@@ -219,7 +222,7 @@ public class Main {
 					network = new ANeuralNetwork(layerConfigurationArray, miniBatchSize);
 					
 					setLoadingLabeltext("Reading training data from file...");
-					DataContainer trainingContainer = ANNFileUtils.readCSV("resources/mnist_train.csv", trainingExamples, 255);
+					DataContainer trainingContainer = ANNFileUtils.readCSV(TRAINING_DATA_FILEPATH, trainingExamples, 255);
 					INDArray trainingData = Nd4j.create((double[][]) trainingContainer.getContentAt(0));
 					INDArray trainingLabels = Nd4j.create((double[][]) trainingContainer.getContentAt(1));
 
@@ -227,7 +230,7 @@ public class Main {
 					network.train(trainingData, trainingLabels, epochs, trainingExamples, miniBatchSize, learningRate);
 
 					setLoadingLabeltext("Reading testing data from file...");
-					DataContainer testContainer = ANNFileUtils.readCSV("resources/mnist_test.csv", testExamples, 255);
+					DataContainer testContainer = ANNFileUtils.readCSV(TEST_DATA_FILEPATH, testExamples, 255);
 					INDArray testData = Nd4j.create((double[][]) testContainer.getContentAt(0));
 					INDArray testLabels = Nd4j.create((double[][]) testContainer.getContentAt(1));
 					testLabelsAsDigits =  Nd4j.argMax(testLabels, 1);
@@ -241,7 +244,7 @@ public class Main {
 							changeSelectedExample(0);
 						}
 					});
-				} catch (FileNotFoundException e) {
+				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
@@ -283,28 +286,60 @@ public class Main {
 	private boolean checkInputsAndFiles(JDialog dialog, JTextField trainingExamples, JTextField testExamples,
 			JTextField epochs, JTextField miniBatchSize, JTextField learningRate) {
 		try {
-			Integer.parseInt(trainingExamples.getText());
-			Integer.parseInt(testExamples.getText());
-			Integer.parseInt(epochs.getText());
-			Integer.parseInt(miniBatchSize.getText());
-			Double.parseDouble(learningRate.getText());
+			checkInputBounds( Integer.parseInt(trainingExamples.getText()), Integer.parseInt(testExamples.getText()),
+			Integer.parseInt(epochs.getText()), Integer.parseInt(miniBatchSize.getText()), Double.parseDouble(learningRate.getText()));
 
-			Scanner scanner = new Scanner(new File("resources/mnist_train.csv"));
-			scanner = new Scanner(new File("resources/mnist_test.csv"));
-			scanner.close();
+			// Test if the data files are were expected
+			ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+			InputStream in = classloader.getResourceAsStream(TRAINING_DATA_FILEPATH);
+			BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+			reader.ready();
+			in = classloader.getResourceAsStream(TEST_DATA_FILEPATH);
+			reader = new BufferedReader(new InputStreamReader(in));
+			reader.ready();
 			return true;
 		} catch (NumberFormatException e1) {
-			JOptionPane.showMessageDialog(dialog, "All fields should be filled correctly", "Error!",
+			JOptionPane.showMessageDialog(dialog, "All fields should be filled correctly", "Format Error!",
 					JOptionPane.ERROR_MESSAGE);
-		} catch (FileNotFoundException e1) {
+		} catch (IOException e1) {
 			JOptionPane.showMessageDialog(dialog,
-					"Couldn't find the mnist_train.csv or mnist_test.csv inside the /resources folder", "Error!",
+					"Couldn't find the mnist_train.csv or mnist_test.csv inside the /resources folder", "File Error!",
 					JOptionPane.ERROR_MESSAGE);
+		}catch (Exception e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(dialog, e.getMessage(), "Bounds Error!", JOptionPane.ERROR_MESSAGE);
 		}
 		return false;
 	}
 
 	
+	private void checkInputBounds(int trainingExamples, int testExamples, int epochs, int miniBatchSize, double learningRate) throws Exception {
+		String errorMessage = "";
+		if(trainingExamples > 60000 || trainingExamples <= 0) {
+			errorMessage += "#Training examples must be between ]0, 60000]. ";
+		}
+		
+		if(testExamples > 10000 || testExamples <= 0) {
+			errorMessage += "#Test examples must be between ]0, 10000]. ";
+		}
+		
+		if(epochs <= 0) {
+			errorMessage += "Epochs must be greater than 0. ";
+		}
+		
+		if(miniBatchSize <= 0 || miniBatchSize >= trainingExamples) {
+			errorMessage += "Mini-batch size must be greater than 0 and lower than # training examples. ";
+		}
+		
+		if(learningRate <= 0 || learningRate > 1) {
+			errorMessage += "Learning rate must be between ]0 , 1]. ";
+		}
+		
+		if(!errorMessage.equals("")) {
+			throw new Exception(errorMessage);
+		}
+	}
+
 	private void setLoadingLabeltext(String text) {
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
@@ -318,7 +353,7 @@ public class Main {
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				@SuppressWarnings("unused")
-				Main m = new Main();
+				App m = new App();
 			}
 		});
 	}

@@ -1,4 +1,4 @@
-package main;
+package algorithm;
 
 import java.util.List;
 import org.nd4j.linalg.api.ndarray.INDArray;
