@@ -12,6 +12,7 @@ public class Layer {
 	INDArray S; 		// matrix with the inputs to this layer
 	INDArray D; 		// matrix with the deltas for this layer
 	INDArray F; 		// matrix with the derivatives of the activation function transposed
+	INDArray BIAS;
 	boolean isInputLayer;
 	boolean isOutputLayer;
 
@@ -26,7 +27,7 @@ public class Layer {
 		
 		// The output layer does not have a W matrix
 		if(!isOutputLayer){
-			W = Nd4j.randn(weightSize[0], weightSize[1], SEED);
+			W = Nd4j.randn(weightSize[0] + 1, weightSize[1], SEED);
 		}
 		
 		// Only the hidden layers have and F matrix
@@ -34,6 +35,7 @@ public class Layer {
 			F = Nd4j.zeros(weightSize[0], batchSize);
 		}
 		
+		this.BIAS = Nd4j.ones(batchSize, 1);
 		this.isInputLayer = isInputLayer;
 		this.isOutputLayer = isOutputLayer;
 	}
@@ -53,6 +55,7 @@ public class Layer {
 		
 		// for the hidden layers computes F with sigmoid activation and returns Z.W
 		Z = Transforms.sigmoid(S, true);
+		Z = Nd4j.hstack(Z, BIAS);
 		F = Transforms.sigmoidDerivative(S, true).transpose();
 		return Z.mmul(W);
 	}

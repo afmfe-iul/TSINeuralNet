@@ -55,8 +55,13 @@ public class ANeuralNetwork {
 		ANNFileUtils.writeTrainingResults(trainingErrorsByEpoch);
 	}
 
-	public INDArray forwardPropagation(INDArray trainingData) {
-		layers.get(0).Z = trainingData;
+	public INDArray forwardPropagation(INDArray data) {
+		// adds bias to the input
+		INDArray bias = Nd4j.ones(data.rows(), 1);
+		layers.get(0).Z = Nd4j.hstack(data, bias);
+		for(Layer l : layers) {
+			l.BIAS = bias;
+		}
 		
 		for(int i = 0; i < layers.size() - 1; i++){
 			Layer nextLayer = layers.get(i + 1);
@@ -71,7 +76,9 @@ public class ANeuralNetwork {
 
 		for(int i = layers.size() - 2; i > 0; i--){
 			Layer currLayer = layers.get(i);
-			currLayer.D = currLayer.W.mmul(layers.get(i + 1).D).mul(currLayer.F);
+			// remove the bias values from W
+			INDArray WwithoutBIAS = currLayer.W.get(NDArrayIndex.interval(0, currLayer.W.rows() - 1), NDArrayIndex.all());
+			currLayer.D = WwithoutBIAS.mmul(layers.get(i + 1).D).mul(currLayer.F);
 		}
 	}
 	
