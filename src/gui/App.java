@@ -72,7 +72,6 @@ public class App {
 		frame.setVisible(true);
 		
 		promptForANNSpecs();
-
 		
 		URL gifURL = Thread.currentThread().getContextClassLoader().getResource("resources/loader.gif");
 		ImageIcon bufferingIcon = new ImageIcon(gifURL);
@@ -168,6 +167,7 @@ public class App {
 	}
 
 	// XXX BEST SPECS SO FAR: {784, 150, 150, 10}, EPHOCS = 20000, MINI-BATCH = 64, LEARNING = 0.05 ---> SUCCESS = 3,47 % (347 errors)
+	// {784, 300, 300, 10}, EPHOCS = 15000, MINI-BATCH = 64, LEARNING = 0.05 ---> SUCCESS = 3,15 % (315 errors)
 	private void promptForANNSpecs() {
 		JDialog dialog = new JDialog(frame);
 		dialog.setTitle("Artificial Neural Network Parameters");
@@ -190,7 +190,7 @@ public class App {
 		JTextField epochs = new JTextField("1000");
 		dialog.add(epochs);
 
-		dialog.add(new JLabel("Mini batch size (must be smaller than # training examples): "));
+		dialog.add(new JLabel("Mini batch size (can't be bigger than # training examples): "));
 		JTextField miniBatchSize = new JTextField("64");
 		dialog.add(miniBatchSize);
 
@@ -226,6 +226,7 @@ public class App {
 		dialog.setModal(true);
 		dialog.setResizable(false);
 		dialog.setVisible(true);
+		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 	}
 
 	private void runTrainingAsynchronously(JDialog dialog, int[] layerConfigurationArray, int trainingExamples,
@@ -362,8 +363,8 @@ public class App {
 			errorMessage += "Epochs must be greater than 0. ";
 		}
 		
-		if(miniBatchSize <= 0 || miniBatchSize >= trainingExamples) {
-			errorMessage += "Mini-batch size must be greater than 0 and lower than # training examples. ";
+		if(miniBatchSize <= 0 || miniBatchSize > trainingExamples) {
+			errorMessage += "Mini-batch size must be greater than 0 and can't be bigger than # training examples. ";
 		}
 		
 		if(learningRate <= 0 || learningRate > 1) {

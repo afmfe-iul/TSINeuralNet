@@ -31,14 +31,11 @@ public class ANeuralNetwork {
 			int miniBatchSize, double learningRate) {
 		INDArray trainingLabelsAsDigits =  Nd4j.argMax(trainingLabels, 1);
 		System.out.println("Starting training of " + epochs + " epochs...");
-		int miniBatchStart = Integer.MAX_VALUE;
 		Random rand = new Random(12345);
 		List<Integer> trainingErrorsByEpoch = new ArrayList<>();
 		
 		for(int e = 0; e < epochs; e++){
-			while(miniBatchStart >= batchSize - miniBatchSize) {
-				miniBatchStart = (int) (rand.nextDouble() * batchSize);
-			}
+			int miniBatchStart =(int) (rand.nextDouble() * (batchSize - (miniBatchSize - 1)));
 			System.out.println("Starting epoch " + e);
 			INDArray yHat = forwardPropagation(trainingData.get(NDArrayIndex.interval(miniBatchStart, miniBatchStart + miniBatchSize), NDArrayIndex.all()));
 			backPropagation(yHat, trainingLabels.get(NDArrayIndex.interval(miniBatchStart, miniBatchStart + miniBatchSize), NDArrayIndex.all()));
@@ -54,7 +51,6 @@ public class ANeuralNetwork {
 			}
 			System.out.println("Epoch " + e + " total errors: " + errors);
 			trainingErrorsByEpoch.add(errors);
-			miniBatchStart = Integer.MAX_VALUE;
 		}
 		ANNFileUtils.writeTrainingResults(trainingErrorsByEpoch);
 	}
