@@ -8,6 +8,6 @@
     -Xms<size>        // sets the initial Java heap size
     -Xmx<size>        // sets the maximum Java heap size
 
-**Also if you want to run the app from a jar file you must have a 64bit JVM. The command to launch the app would be something like:**
+**Also if you want to run the app from a jar file you must have a 64bit JVM. The command to launch the app with 1500MB of heap space would be:**
     
-    	java -jar -d64 -Xmx1500 <jar path>
+    	java -jar -d64 -Xmx1500m <jar path>

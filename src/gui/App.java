@@ -2,6 +2,8 @@ package gui;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
@@ -12,6 +14,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URL;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -37,9 +40,10 @@ public class App {
 	private static final String TEST_DATA_FILEPATH = "resources/mnist_test.csv";
 
 	JFrame frame;
+	JPanel imgPanel;
 	JLabel loadingLabel;
+	JLabel loadingGif;
 	JLabel guessLabel;
-	JLabel imgLabel;
 	JLabel[] decisionLabels;
 	int selectedError;
 	int selectedSuccess;
@@ -54,19 +58,28 @@ public class App {
 		selectedSuccess = 0;
 		showingSuccesses = true;
 		
-		frame = new JFrame();
+		frame = new JFrame("MNIST Test");
 		frame.setLayout(new BorderLayout());
 		frame.setSize(FRAME_W, FRAME_H);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setResizable(false);
 		frame.setLocationRelativeTo(null);
 		
-		ImageIcon bufferingIcon = new ImageIcon("resources/ajax-loader.gif");
-		loadingLabel = new JLabel("Defining Artificial Neural Network Specs...", bufferingIcon, JLabel.CENTER);
-		frame.getContentPane().add(loadingLabel, BorderLayout.CENTER);
+		loadingLabel = new JLabel("Defining Artificial Neural Network Specs...");
+		loadingLabel.setFont(new Font(Font.DIALOG, Font.BOLD, 16));
+		loadingLabel.setHorizontalAlignment(JLabel.CENTER);
+		frame.getContentPane().add(loadingLabel, BorderLayout.NORTH);
 		frame.setVisible(true);
 		
 		promptForANNSpecs();
+
+		
+		URL gifURL = Thread.currentThread().getContextClassLoader().getResource("resources/loader.gif");
+		ImageIcon bufferingIcon = new ImageIcon(gifURL);
+		loadingGif = new JLabel();
+		loadingGif.setIcon(bufferingIcon);
+		loadingGif.setHorizontalAlignment(JLabel.CENTER);
+		frame.getContentPane().add(loadingGif, BorderLayout.CENTER);
 	}
 
 	public void loadTestResultsUI() {
@@ -80,12 +93,14 @@ public class App {
 
 		// Center Panel
 		frame.getContentPane().remove(loadingLabel);
-		imgLabel = new JLabel();
-		imgLabel.setHorizontalAlignment(JLabel.CENTER);
+		frame.getContentPane().remove(loadingGif);
+		imgPanel = new JPanel(new FlowLayout());
+		imgPanel.add(new JLabel());
+		imgPanel.add(new JLabel());
 		guessLabel = new JLabel();
 		guessLabel.setHorizontalAlignment(JLabel.CENTER);
 		JPanel centerPanel = new JPanel(new GridLayout(2, 1));
-		centerPanel.add(imgLabel);
+		centerPanel.add(imgPanel);
 		centerPanel.add(guessLabel);
 		frame.getContentPane().add(centerPanel, BorderLayout.CENTER);
 
@@ -164,7 +179,7 @@ public class App {
 		dialog.add(layerConfiguration);
 
 		dialog.add(new JLabel("Number of training examples from MNIST dataset (max = 60000): "));
-		JTextField trainingExamples = new JTextField("60000");
+		JTextField trainingExamples = new JTextField("15000");
 		dialog.add(trainingExamples);
 
 		dialog.add(new JLabel("Number of test examples from MNIST dataset (max = 10000): "));
@@ -172,7 +187,7 @@ public class App {
 		dialog.add(testExamples);
 
 		dialog.add(new JLabel("Number of Epochs (train cycles): "));
-		JTextField epochs = new JTextField("20000");
+		JTextField epochs = new JTextField("1000");
 		dialog.add(epochs);
 
 		dialog.add(new JLabel("Mini batch size (must be smaller than # training examples): "));
@@ -244,7 +259,17 @@ public class App {
 							changeSelectedExample(0);
 						}
 					});
-				} catch (IOException e) {
+				}catch (OutOfMemoryError e) {
+					JLabel errorMessage = new JLabel("<html>The JVM ran out of heap space.<br>To run a Neural Network with this "
+							+ "configuration you must run the Jar from the command line.<br>For example, to increase"
+							+ " the JVM heap space to 1500MB, use the following command:<br><br>"
+							+ "<b>java -jar -d64 -Xmx1500m  %insert your jar path here%</b></html>");
+					errorMessage.setFont(new Font(Font.DIALOG, Font.PLAIN, 15));
+					JOptionPane.showMessageDialog(dialog, errorMessage, "Memory Error!",
+							JOptionPane.ERROR_MESSAGE);
+					System.exit(0);
+				}
+				catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
@@ -272,8 +297,19 @@ public class App {
 		BufferedImage outputImage = new BufferedImage(ICON_W, ICON_H, BufferedImage.TYPE_BYTE_GRAY);
 		WritableRaster raster = outputImage.getRaster();
 		raster.setSamples(0, 0, ICON_W, ICON_H, 0, result);
-		ImageIcon imgIcon = new ImageIcon(outputImage.getScaledInstance(ICON_W * 2, ICON_H * 2, Image.SCALE_SMOOTH));
-		imgLabel.setIcon(imgIcon);
+		ImageIcon smallIcon = new ImageIcon(outputImage.getScaledInstance(ICON_W, ICON_H, Image.SCALE_SMOOTH));
+		ImageIcon bigIcon = new ImageIcon(outputImage.getScaledInstance(ICON_W * 3, ICON_H * 3, Image.SCALE_SMOOTH));
+		
+		JLabel smallLabel = ((JLabel) imgPanel.getComponent(0));
+		smallLabel.setIcon(smallIcon);
+		smallLabel.setHorizontalTextPosition(JLabel.CENTER);
+		smallLabel.setVerticalTextPosition(JLabel.BOTTOM);
+		
+		JLabel bigLabel = ((JLabel) imgPanel.getComponent(1));
+		bigLabel.setIcon(bigIcon);
+		bigLabel.setHorizontalTextPosition(JLabel.CENTER);
+		bigLabel.setVerticalTextPosition(JLabel.BOTTOM);
+
 		guessLabel.setText("<html>Neural Network guess: " + testResults.getResultsAsDigits().getInt(selectedExample)
 				+ "<br>" + "Correct answer: " + testLabelsAsDigits.getInt(selectedExample) + "</html>");
 		
@@ -306,7 +342,6 @@ public class App {
 					"Couldn't find the mnist_train.csv or mnist_test.csv inside the /resources folder", "File Error!",
 					JOptionPane.ERROR_MESSAGE);
 		}catch (Exception e) {
-			e.printStackTrace();
 			JOptionPane.showMessageDialog(dialog, e.getMessage(), "Bounds Error!", JOptionPane.ERROR_MESSAGE);
 		}
 		return false;
